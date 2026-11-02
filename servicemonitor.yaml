@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vllm-hardware-profiler
+  namespace: nemotron
+  labels:
+    app: vllm-hardware-profiler
+    release: prometheus          # adjust to match your Prometheus Operator release label
+spec:
+  selector:
+    matchLabels:
+      app: vllm-hardware-profiler
+  namespaceSelector:
+    matchNames:
+      - nemotron
+  endpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 4s
+      path: /metrics
+      scheme: http

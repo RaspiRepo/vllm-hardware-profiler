@@ -1,0 +1,4 @@
+torch>=2.4.0
+prometheus-client>=0.20.0
+nvidia-ml-py>=12.560.30
+psutil>=5.9.0

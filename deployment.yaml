@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-hardware-profiler
+  namespace: nemotron
+  labels:
+    app: vllm-hardware-profiler
+    component: telemetry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-hardware-profiler
+  template:
+    metadata:
+      labels:
+        app: vllm-hardware-profiler
+        component: telemetry
+      annotations:
+        # Optional: if you use Prometheus annotations instead of ServiceMonitor
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9108"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Required for GPU access
+      runtimeClassName: nvidia          # or your cluster's NVIDIA RuntimeClass
+      containers:
+        - name: hardware-profiler
+          image: your-registry/vllm-hardware-profiler:latest
+          imagePullPolicy: Always
+          args:
+            - "--interval"
+            - "2"
+            - "--port"
+            - "9108"
+          ports:
+            - name: metrics
+              containerPort: 9108
+              protocol: TCP
+          resources:
+            limits:
+              nvidia.com/gpu: 1          # needs visibility of the GPU
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+              nvidia.com/gpu: 1
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
+          # Optional readiness / liveness
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      # If you want the profiler to share the same GPU as a co-located vLLM pod,
+      # use a sidecar pattern or node affinity / pod affinity instead of a separate GPU request.
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        # Optional – match your GPU nodes
+        # nvidia.com/gpu.product: "NVIDIA-GeForce-RTX-5060-Ti"
+        accelerator: nvidia
